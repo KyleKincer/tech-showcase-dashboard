@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-light: #ffffff;
+  --color-dark: #000000;
+}
+
+body {
+  font-family: 
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  color: var(--color-dark);
+  background: var(--color-light);
+  line-height: 1.5;
+}
+
+/* Auth input styling */
+.auth-input-field {
+  @apply w-full px-4 py-3 border-2 border-black focus:outline-none focus:ring-0 font-mono;
+}
+
+/* Auth button styling */
+.auth-button {
+  @apply w-full px-4 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors;
+}
+
+/* Remove default button styles */
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* Input focus styles */
+input:focus {
+  outline: none;
+}
+
+/* Ensure consistent spacing */
+* {
+  box-sizing: border-box;
+}

@@ -1,0 +1,14 @@
+# Node / Vite
+node_modules/
+dist/
+.DS_Store
+
+# Env files
+.env*
+!.env.example
+
+# Vercel local metadata
+.vercel/
+
+# Convex cache (keep generated for now so build works without pre-step)
+# convex/_generated/
