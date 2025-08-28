@@ -5,6 +5,7 @@ import { SignOutButton } from "./SignOutButton";
 import { Toaster, toast } from "sonner";
 import { useState } from "react";
 import { Id } from "../convex/_generated/dataModel";
+import { inferNameFromEmailClient } from "@/lib/utils";
 
 export default function App() {
   return (
@@ -694,7 +695,11 @@ function PresentationItem({
                 {presentation.title}
               </h4>
               <p className={subtitleClasses}>
-                by {presentation.presenterName}
+                by {
+                  presentation.presenterName?.includes("@") && presentation.presenterEmail
+                    ? inferNameFromEmailClient(presentation.presenterEmail) || presentation.presenterName
+                    : presentation.presenterName
+                }
                 {isAdmin && !isOwner && (
                   <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-mono rounded">
                     ADMIN VIEW

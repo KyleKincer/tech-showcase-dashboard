@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { inferNameFromEmail } from "./utils";
 
 // Get next Thursday's date
 function getNextThursday(): string {
@@ -171,8 +172,8 @@ export const signUpToPresent = mutation({
     
     await ctx.db.insert("presentations", {
       title: args.title.trim(),
-      presenterName: user.name || user.email || "Anonymous",
-      presenterEmail: user.email || "",
+      presenterName: (user.name as string | undefined) || inferNameFromEmail(user.email as string | undefined) || (user.email as string | undefined) || "Anonymous",
+      presenterEmail: (user.email as string | undefined) || "",
       meetingDate,
       signupTime: Date.now(),
     });
