@@ -27,3 +27,14 @@ Check out the [Convex docs](https://docs.convex.dev/) for more information on ho
 ## HTTP API
 
 User-defined http routes are defined in the `convex/router.ts` file. We split these routes into a separate file from `convex/http.ts` to allow us to prevent the LLM from modifying the authentication routes.
+
+## Admin Backfill
+
+Admins can now backfill past meetings and add presentations on behalf of other users:
+- In the authenticated UI, an "ADMIN: Backfill Presentation" panel appears above the admin controls.
+- Enter a meeting date (YYYY-MM-DD), presenter email, optional presenter name, and the title.
+- Click ADD to insert the presentation immediately, even for past or inactive weeks.
+
+Notes:
+- Only users listed in the `admins` table can access this panel. Use the existing Convex mutations `presentations.addAdmin` / `presentations.removeAdmin` to manage admins.
+- After pulling code, run `npm run dev` (or `npm run lint`) once to regenerate Convex types so the new mutation appears in `convex/_generated`.

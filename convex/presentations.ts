@@ -356,6 +356,47 @@ export const removeRecordingLink = mutation({
   },
 });
 
+// Admin: Add a presentation on behalf of a user (for backfilling past meetings)
+export const adminAddPresentation = mutation({
+  args: {
+    title: v.string(),
+    meetingDate: v.string(), // YYYY-MM-DD
+    presenterEmail: v.string(),
+    presenterName: v.optional(v.string()),
+    signupTime: v.optional(v.number()), // allow custom ordering/backfill timestamp
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be logged in to add presentations");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user || !user.email) {
+      throw new Error("User not found");
+    }
+
+    // Only admins can backfill or add for others
+    const isCurrentUserAdmin = await isUserAdmin(ctx, user.email);
+    if (!isCurrentUserAdmin) {
+      throw new Error("Only admins can add presentations for others");
+    }
+
+    const presenterEmail = args.presenterEmail.trim().toLowerCase();
+    const presenterName = (args.presenterName?.trim() || inferNameFromEmail(presenterEmail) || presenterEmail);
+
+    await ctx.db.insert("presentations", {
+      title: args.title.trim(),
+      presenterName,
+      presenterEmail,
+      meetingDate: args.meetingDate,
+      signupTime: args.signupTime ?? Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
 export const markWeekInactive = mutation({
   args: {
     meetingDate: v.string(),
