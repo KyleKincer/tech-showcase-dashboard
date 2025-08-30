@@ -6,6 +6,7 @@ import { Toaster, toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Id } from "../convex/_generated/dataModel";
 import { inferNameFromEmailClient } from "@/lib/utils";
+import { AdminTools } from "./AdminTools";
 
 export default function App() {
   return (
@@ -227,17 +228,18 @@ function AuthenticatedContent() {
           {/* Admin Controls */}
           {isAdmin && (
             <div className="space-y-4">
-              <BackfillManager defaultMeetingDate={currentData.date} />
-              <RecordingManager 
-                meetingDate={currentData.date} 
-                currentRecordingUrl={currentData.recordingUrl} 
+              <div className="flex justify-end">
+                <AdminTools defaultMeetingDate={currentData.date} />
+              </div>
+              <RecordingManager
+                meetingDate={currentData.date}
+                currentRecordingUrl={currentData.recordingUrl}
               />
-              <InactiveWeekManager 
+              <InactiveWeekManager
                 meetingDate={currentData.date}
                 isInactive={isInactiveWeek}
                 inactiveReason={currentData.inactiveReason}
               />
-              <AdminManager />
             </div>
           )}
           
@@ -284,337 +286,7 @@ function AuthenticatedContent() {
   );
 }
 
-function InactiveWeekManager({ 
-  meetingDate, 
-  isInactive,
-  inactiveReason
-}: { 
-  meetingDate: string; 
-  isInactive: boolean;
-  inactiveReason?: string;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [reason, setReason] = useState(inactiveReason || "");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const markWeekInactive = useMutation(api.presentations.markWeekInactive);
-  const markWeekActive = useMutation(api.presentations.markWeekActive);
 
-  const handleMarkInactive = async () => {
-    setIsSubmitting(true);
-    try {
-      await markWeekInactive({
-        meetingDate,
-        reason: reason.trim() || undefined,
-      });
-      setIsEditing(false);
-      toast.success("Week marked as inactive!");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to mark week as inactive");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleMarkActive = async () => {
-    setIsSubmitting(true);
-    try {
-      await markWeekActive({ meetingDate });
-      setReason("");
-      toast.success("Week marked as active!");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to mark week as active");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setReason(inactiveReason || "");
-    setIsEditing(false);
-  };
-
-  return (
-    <div className={`border-2 p-4 rounded ${
-      isInactive ? "bg-gray-50 border-gray-300" : "bg-orange-50 border-orange-200"
-    }`}>
-      <div className="flex items-center justify-between mb-2">
-        <h5 className={`font-bold ${
-          isInactive ? "text-gray-700" : "text-orange-800"
-        }`}>
-          ADMIN: Week Status
-        </h5>
-        <div className={`px-2 py-1 text-xs font-bold rounded ${
-          isInactive 
-            ? "bg-gray-200 text-gray-700" 
-            : "bg-green-200 text-green-700"
-        }`}>
-          {isInactive ? "[INACTIVE]" : "[ACTIVE]"}
-        </div>
-      </div>
-      
-      {isEditing ? (
-        <div className="space-y-3">
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Optional reason for marking week as inactive"
-            className="w-full p-2 border-2 border-orange-300 font-mono text-sm resize-none"
-            rows={2}
-            disabled={isSubmitting}
-          />
-          <div className="flex space-x-2">
-            <button
-              onClick={handleMarkInactive}
-              disabled={isSubmitting}
-              className="px-3 py-1 bg-orange-600 text-white font-bold text-sm hover:bg-orange-700 disabled:bg-gray-300"
-            >
-              MARK INACTIVE
-            </button>
-            <button
-              onClick={handleCancel}
-              disabled={isSubmitting}
-              className="px-3 py-1 border-2 border-gray-400 text-gray-600 text-sm hover:bg-gray-50"
-            >
-              CANCEL
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-between">
-          <div>
-            <p className={`text-sm ${
-              isInactive ? "text-gray-600" : "text-orange-700"
-            }`}>
-              {isInactive 
-                ? `Week is inactive. ${inactiveReason ? `Reason: ${inactiveReason}` : "No reason provided."}`
-                : "Week is active and accepting signups"
-              }
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            {isInactive ? (
-              <button
-                onClick={handleMarkActive}
-                disabled={isSubmitting}
-                className="px-3 py-1 bg-green-600 text-white text-sm font-mono hover:bg-green-700"
-              >
-                MARK ACTIVE
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="px-3 py-1 border-2 border-orange-600 text-orange-600 text-sm font-mono hover:bg-orange-50"
-              >
-                MARK INACTIVE
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AdminManager() {
-  const admins = useQuery(api.presentations.listAdmins);
-  const addAdmin = useMutation(api.presentations.addAdmin);
-  const removeAdmin = useMutation(api.presentations.removeAdmin);
-  const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
-
-  const handleAdd = async () => {
-    if (!email.trim()) return;
-    setIsSubmitting(true);
-    try {
-      await addAdmin({ email: email.trim() });
-      toast.success("Admin added");
-      setEmail("");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to add admin");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRemove = async (targetEmail: string) => {
-    setIsSubmitting(true);
-    try {
-      await removeAdmin({ email: targetEmail });
-      toast.success("Admin removed");
-      setConfirmEmail(null);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to remove admin");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="bg-gray-50 border-2 border-gray-300 p-4 rounded">
-      <h5 className="font-bold text-gray-800 mb-3">ADMIN: Manage Admins</h5>
-      <div className="flex gap-2 mb-3">
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="user@company.com"
-          className="flex-1 p-2 border-2 border-gray-300 font-mono text-sm"
-        />
-        <button
-          onClick={handleAdd}
-          disabled={!email.trim() || isSubmitting}
-          className="px-3 py-2 bg-gray-900 text-white text-sm font-bold hover:bg-black disabled:bg-gray-300"
-        >
-          ADD ADMIN
-        </button>
-      </div>
-
-      <div className="border-2 border-gray-200">
-        <div className="px-3 py-2 bg-gray-100 text-xs font-mono text-gray-700 border-b-2 border-gray-200">
-          CURRENT ADMINS
-        </div>
-        <div className="divide-y-2 divide-gray-200">
-          {admins === undefined ? (
-            <div className="p-3 text-sm text-gray-500">Loading...</div>
-          ) : admins.length === 0 ? (
-            <div className="p-3 text-sm text-gray-500">No admins found</div>
-          ) : (
-            admins.map((a: any) => (
-              <div key={a._id} className="p-3 flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-mono">{a.email}</div>
-                  <div className="text-xs text-gray-500">
-                    added by {a.addedBy} • {new Date(a.addedAt).toLocaleString()}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {confirmEmail === a.email ? (
-                    <>
-                      <button
-                        onClick={() => handleRemove(a.email)}
-                        disabled={isSubmitting}
-                        className="px-3 py-1 bg-red-600 text-white text-xs font-bold hover:bg-red-700"
-                      >
-                        CONFIRM
-                      </button>
-                      <button
-                        onClick={() => setConfirmEmail(null)}
-                        className="px-3 py-1 border-2 border-gray-400 text-gray-700 text-xs font-mono hover:bg-gray-50"
-                      >
-                        CANCEL
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmEmail(a.email)}
-                      className="px-3 py-1 border-2 border-red-600 text-red-600 text-xs font-mono hover:bg-red-50"
-                    >
-                      REMOVE
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-      <p className="text-xs text-gray-600 mt-2">You cannot remove yourself; backend prevents it.</p>
-    </div>
-  );
-}
-
-function BackfillManager({ defaultMeetingDate }: { defaultMeetingDate: string }) {
-  const [meetingDate, setMeetingDate] = useState(defaultMeetingDate);
-  // Keep local date in sync when navigating weeks
-  useEffect(() => {
-    setMeetingDate(defaultMeetingDate);
-  }, [defaultMeetingDate]);
-  const [presenterEmail, setPresenterEmail] = useState("");
-  const [presenterName, setPresenterName] = useState("");
-  const [title, setTitle] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  // Cast to any to avoid type errors before Convex codegen updates
-  const adminAddPresentation = useMutation((api as any).presentations.adminAddPresentation);
-
-  const handleAdd = async () => {
-    if (!title.trim() || !presenterEmail.trim() || !meetingDate) return;
-    setIsSubmitting(true);
-    try {
-      await adminAddPresentation({
-        title: title.trim(),
-        meetingDate,
-        presenterEmail: presenterEmail.trim(),
-        presenterName: presenterName.trim() || undefined,
-      });
-      toast.success("Presentation backfilled!");
-      setTitle("");
-      // Keep meetingDate and presenter info to speed multiple adds
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to add presentation");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="bg-purple-50 border-2 border-purple-200 p-4 rounded">
-      <h5 className="font-bold text-purple-800 mb-3">ADMIN: Backfill Presentation</h5>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <div>
-          <label className="block text-xs text-purple-800 font-mono mb-1">Meeting Date</label>
-          <input
-            type="date"
-            value={meetingDate}
-            onChange={(e) => setMeetingDate(e.target.value)}
-            className="w-full p-2 border-2 border-purple-300 font-mono text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-purple-800 font-mono mb-1">Presenter Email</label>
-          <input
-            type="email"
-            value={presenterEmail}
-            onChange={(e) => setPresenterEmail(e.target.value)}
-            placeholder="user@company.com"
-            className="w-full p-2 border-2 border-purple-300 font-mono text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-purple-800 font-mono mb-1">Presenter Name (optional)</label>
-          <input
-            type="text"
-            value={presenterName}
-            onChange={(e) => setPresenterName(e.target.value)}
-            placeholder="Auto-infers from email if blank"
-            className="w-full p-2 border-2 border-purple-300 font-mono text-sm"
-          />
-        </div>
-        <div className="md:col-span-4">
-          <label className="block text-xs text-purple-800 font-mono mb-1">Title</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter presentation title"
-              className="flex-1 p-2 border-2 border-purple-300 font-mono text-sm"
-              maxLength={200}
-            />
-            <button
-              onClick={handleAdd}
-              disabled={!title.trim() || !presenterEmail.trim() || !meetingDate || isSubmitting}
-              className="px-3 py-2 bg-purple-700 text-white text-sm font-bold hover:bg-purple-800 disabled:bg-gray-300"
-            >
-              ADD
-            </button>
-          </div>
-        </div>
-      </div>
-      <p className="text-xs text-purple-700 mt-2">Adds immediately, even for past or inactive weeks.</p>
-    </div>
-  );
-}
 
 function RecordingManager({ 
   meetingDate, 
@@ -667,21 +339,21 @@ function RecordingManager({
   };
 
   return (
-    <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded">
+    <div className="border-2 border-black p-4">
       <div className="flex items-center justify-between mb-2">
-        <h5 className="font-bold text-blue-800">ADMIN: Recording Link</h5>
+        <h5 className="font-bold">Recording Link</h5>
         {currentRecordingUrl && !isEditing && (
           <a
             href={currentRecordingUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1 bg-blue-600 text-white font-mono text-sm hover:bg-blue-700 transition-colors"
+            className="px-3 py-1 border-2 border-black font-mono text-sm hover:bg-black hover:text-white"
           >
             [VIEW]
           </a>
         )}
       </div>
-      
+
       {isEditing ? (
         <div className="space-y-3">
           <input
@@ -689,21 +361,21 @@ function RecordingManager({
             value={recordingUrl}
             onChange={(e) => setRecordingUrl(e.target.value)}
             placeholder="Enter recording URL (YouTube, Zoom, etc.)"
-            className="w-full p-2 border-2 border-blue-300 font-mono text-sm"
+            className="w-full p-2 border-2 border-black font-mono text-sm"
             disabled={isSubmitting}
           />
           <div className="flex space-x-2">
             <button
               onClick={handleSave}
               disabled={!recordingUrl.trim() || isSubmitting}
-              className="px-3 py-1 bg-green-600 text-white font-bold text-sm hover:bg-green-700 disabled:bg-gray-300"
+              className="px-3 py-1 bg-black text-white text-sm font-mono hover:bg-gray-800 disabled:bg-gray-300"
             >
               SAVE
             </button>
             <button
               onClick={handleCancel}
               disabled={isSubmitting}
-              className="px-3 py-1 border-2 border-gray-400 text-gray-600 text-sm hover:bg-gray-50"
+              className="px-3 py-1 border-2 border-black text-sm font-mono hover:bg-gray-100"
             >
               CANCEL
             </button>
@@ -711,7 +383,7 @@ function RecordingManager({
               <button
                 onClick={handleRemove}
                 disabled={isSubmitting}
-                className="px-3 py-1 bg-red-600 text-white font-bold text-sm hover:bg-red-700"
+                className="px-3 py-1 bg-red-600 text-white text-sm font-mono hover:bg-red-700"
               >
                 REMOVE
               </button>
@@ -720,12 +392,12 @@ function RecordingManager({
         </div>
       ) : (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-blue-700">
+          <p className="text-sm text-gray-700">
             {currentRecordingUrl ? "Recording link is set" : "No recording link set"}
           </p>
           <button
             onClick={() => setIsEditing(true)}
-            className="px-3 py-1 border-2 border-blue-600 text-blue-600 text-sm font-mono hover:bg-blue-50"
+            className="px-3 py-1 border-2 border-black text-sm font-mono hover:bg-black hover:text-white"
           >
             {currentRecordingUrl ? "EDIT" : "ADD LINK"}
           </button>
@@ -950,3 +622,126 @@ function PresentationItem({
     </div>
   );
 }
+
+function InactiveWeekManager({
+  meetingDate,
+  isInactive,
+  inactiveReason
+}: {
+  meetingDate: string;
+  isInactive: boolean;
+  inactiveReason?: string;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [reason, setReason] = useState(inactiveReason || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const markWeekInactive = useMutation(api.presentations.markWeekInactive);
+  const markWeekActive = useMutation(api.presentations.markWeekActive);
+
+  const handleMarkInactive = async () => {
+    setIsSubmitting(true);
+    try {
+      await markWeekInactive({
+        meetingDate,
+        reason: reason.trim() || undefined,
+      });
+      setIsEditing(false);
+      toast.success("Week marked as inactive!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to mark week as inactive");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMarkActive = async () => {
+    setIsSubmitting(true);
+    try {
+      await markWeekActive({ meetingDate });
+      setReason("");
+      toast.success("Week marked as active!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to mark week as active");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setReason(inactiveReason || "");
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="border-2 border-black p-4">
+      <div className="flex items-center justify-between mb-2">
+        <h5 className="font-bold">Week Status</h5>
+        <div
+          className={`px-2 py-1 text-xs font-bold border-2 border-black ${
+            isInactive ? "bg-gray-200 text-gray-700" : "bg-black text-white"
+          }`}
+        >
+          {isInactive ? "[INACTIVE]" : "[ACTIVE]"}
+        </div>
+      </div>
+
+      {isEditing ? (
+        <div className="space-y-3">
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Optional reason for marking week as inactive"
+            className="w-full p-2 border-2 border-black font-mono text-sm resize-none"
+            rows={2}
+            disabled={isSubmitting}
+          />
+          <div className="flex space-x-2">
+            <button
+              onClick={handleMarkInactive}
+              disabled={isSubmitting}
+              className="px-3 py-1 bg-black text-white text-sm font-mono hover:bg-gray-800 disabled:bg-gray-300"
+            >
+              MARK INACTIVE
+            </button>
+            <button
+              onClick={handleCancel}
+              disabled={isSubmitting}
+              className="px-3 py-1 border-2 border-black text-sm font-mono hover:bg-gray-100"
+            >
+              CANCEL
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-700">
+              {isInactive
+                ? `Week is inactive. ${inactiveReason ? `Reason: ${inactiveReason}` : "No reason provided."}`
+                : "Week is active and accepting signups"}
+            </p>
+          </div>
+          <div className="flex space-x-2">
+            {isInactive ? (
+              <button
+                onClick={handleMarkActive}
+                disabled={isSubmitting}
+                className="px-3 py-1 bg-black text-white text-sm font-mono hover:bg-gray-800"
+              >
+                MARK ACTIVE
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="px-3 py-1 border-2 border-black text-sm font-mono hover:bg-black hover:text-white"
+              >
+                MARK INACTIVE
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
